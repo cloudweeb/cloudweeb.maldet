@@ -1,0 +1,37 @@
+---
+
+- name: Get maldet installer archive
+  get_url:
+    url: https://www.rfxn.com/downloads/maldetect-current.tar.gz
+    dest: /tmp
+  register: __maldet_download
+  until: __maldet_download is succeeded
+  retries: 5
+  delay: 2
+
+- name: Unarchive maldet installer
+  unarchive:
+    src: /tmp/maldetect-current.tar.gz
+    dest: /tmp
+    remote_src: true
+
+- name: Installing maldet
+  command: bash install.sh
+  args:
+    chdir: "/tmp/maldetect-{{ maldet_version }}"
+    creates: /usr/local/sbin/maldet
+
+- name: Configuring maldet
+  template:
+    src: maldet_conf.maldet.j2
+    dest: /usr/local/maldetect/conf.maldet
+  notify: restart maldet
+
+- name: Start and enable maldet service
+  service:
+    name: maldet
+    state: started
+    enabled: true
+  when:
+    - maldet_service_enabled|bool
+    - maldet_default_monitor_mode is defined and maldet_default_monitor_mode
